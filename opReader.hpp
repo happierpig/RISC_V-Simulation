@@ -101,7 +101,8 @@ public:
     }
     void writeData(int pos,int size,unsigned int data){
         for(int i = 0;i < size;++i){
-
+            unsigned int tmp = data & (0b11111111u);
+            data >>= 8;
         }
     }
 };
