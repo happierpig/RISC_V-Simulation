@@ -103,6 +103,7 @@ public:
         for(int i = 0;i < size;++i){
             unsigned int tmp = data & (0b11111111u);
             data >>= 8;
+            opCode[pos+i] = (unsigned char) tmp;
         }
     }
 };
