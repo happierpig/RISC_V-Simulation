@@ -4,14 +4,14 @@
 
 #ifndef RISC_V_PARSER_HPP
 #define RISC_V_PARSER_HPP
-enum opClass{LUI,AUIPC,JAL,JALR,BEQ,BNE,BLT,BGE,BLTU,BGEU,LB,LH,LW,LBU,LHU,SB,SH,SW,ADDI,SLTI,SLTIU,XORI,ORI,ANDI,SLLI,SRLI,SRAI,ADD,SUB,SLL,SLT,SLTU,XOR,SRL,SRA,OR,AND};
+enum opClass{LUI,AUIPC,JAL,JALR,BEQ,BNE,BLT,BGE,BLTU,BGEU,LB,LH,LW,LBU,LHU,SB,SH,SW,ADDI,SLTI,SLTIU,XORI,ORI,ANDI,SLLI,SRLI,SRAI,ADD,SUB,SLL,SLT,SLTU,XOR,SRL,SRA,OR,AND,nullop};
 class parser{
 private:
     unsigned int code;
     opClass codeClass;
 public:
     parser() = delete;
-    explicit parser(unsigned int tmp):code(tmp){
+    explicit parser(unsigned int tmp):code(tmp),codeClass(nullop){
         unsigned int opCode = tmp & (0b1111111u);
         unsigned int func = (tmp >> 12) & (0b111u);
         unsigned int func7 = (tmp >> 25) & (0b1111111u);
@@ -68,7 +68,7 @@ public:
             if(func == 0b110u) codeClass = OR;
             if(func == 0b111u) codeClass = AND;
         }
-        throw 1;
+        if(codeClass == nullop) throw 1;
     }
 public:
     opClass getClass(){return codeClass;}
@@ -89,8 +89,8 @@ public:
         unsigned int inst31 = code >> 31;
         if(codeClass == LUI || codeClass == AUIPC){ // type U
             imm = code;
-            code >>= 12;
-            code <<= 12;
+            imm >>= 12;
+            imm <<= 12;
             return imm;
         }
         if(codeClass == JAL){ // type J

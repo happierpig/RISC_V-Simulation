@@ -35,8 +35,7 @@ public:
 private:
     void writeBack(state & codeState){
         if(codeState.regFlag) {
-            if (codeState.rd == 0) return;
-            reg[codeState.rd] = codeState.value;
+            if (codeState.rd != 0) reg[codeState.rd] = codeState.value;
         }
         if(codeState.pcFlag){
             pc = codeState.newpc;
@@ -350,13 +349,22 @@ private:
     }
 public:
     void run(){
-        state codeState;
-        codeState.pc = pc;
-        unsigned opCode = IF(); // 1
-        parser ID_code(ID(opCode)); // 2
-        execute(opCode,ID_code,codeState);// 3
-        mem(codeState); // 4
-        writeBack(codeState); // 5
+        while(true) {
+            state codeState;
+            codeState.pc = pc;
+            unsigned opCode = IF(); // 1
+            if(opCode == 0x0ff00513u){
+                std::cout << (unsigned int)(reg[10] & (0b11111111u));
+                break;
+            }
+//            if(opCode == 0x8067u){
+//                std::cout << "debug";
+//            }
+            parser ID_code(ID(opCode)); // 2
+            execute(opCode, ID_code, codeState);// 3
+            mem(codeState); // 4
+            writeBack(codeState); // 5
+        }
     }
 };
 #endif //RISC_V_PROGRAM_HPP
