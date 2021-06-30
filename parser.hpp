@@ -170,7 +170,7 @@ public:
             }
         }
         if(codeClass == ADD || codeClass == SUB || codeClass == SLL || codeClass == SLT || codeClass == SLTU || codeClass == XOR || codeClass == SRL || codeClass == SRA || codeClass == OR || codeClass == AND){ // type R
-            throw 1;
+            return 0;
         }
     }
 

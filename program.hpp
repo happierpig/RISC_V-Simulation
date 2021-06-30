@@ -11,246 +11,272 @@ private:
     reader narrator;
     unsigned int reg[32];
     unsigned int pc;
-    struct state{
-        unsigned int pc = 0; // the pc of executed instruction
-        // about ram operation
+    struct regFD{
+        unsigned int pc = 0u;
+        unsigned int code = 0u;
+    }rfd;
+    struct regDE{
+        unsigned int pc;
+        opClass codeClass;
+        unsigned int rs1_value;
+        unsigned int rs2_value;
+        unsigned int rd;
+        unsigned int shamt;
+        unsigned int imm;
+    }rde;
+    struct regEM{
+        unsigned int pc;
         bool ramFlag = false;
-        unsigned int ramPos = 0u;//position
-        bool ramRead = false;bool ramWrite = false;
-        int size = 0;//bytes
-        unsigned int data = 0u;
-        bool sign = false; // sign/unsigned-extend
-        // left-value register assignation
-        bool regFlag = false;
-        int rd = 0;
-        unsigned int value = 0u;
-        //pc of cpu modification
+        unsigned int ramPos = 0u;
+        bool ramRead = false;
+        bool ramWrite = false;
+        bool sign = false;
+        unsigned int data;
+        unsigned int size;
         bool pcFlag = false;
         unsigned int newpc = 0;
-    };
+        bool regFlag = false;
+        unsigned int rd = 0u;
+        unsigned int value = 0u;
+        void setDefault(){
+            pc = ramPos = newpc = rd = data = value = size = 0u;
+            ramFlag = ramRead = ramWrite = pcFlag = regFlag = sign = false;
+        }
+    }rem;
+    struct regMW{
+        bool regFlag = false;
+        unsigned int rd;
+        unsigned int value;
+        void setDefault(){
+            regFlag = false;
+            rd = value = 0u;
+        }
+    }rmw;
 public:
     program(): narrator(1000000),pc(0){
         narrator.initialize();
     }
 private:
-    void writeBack(state & codeState){
-        if(codeState.regFlag) {
-            if (codeState.rd != 0) reg[codeState.rd] = codeState.value;
-        }
-        if(codeState.pcFlag){
-            pc = codeState.newpc;
-        }
-    }
-    unsigned int IF(){
-        unsigned int ans = narrator.readIns(pc);
+
+
+    void IF(){
+        rfd.pc = pc;
+        rfd.code = narrator.readIns(pc);
         pc += 4;
-        return ans;
     }
-    parser ID(unsigned int code){
-        return parser(code);
+
+    void ID(){
+        parser ID_code(rfd.code);
+        unsigned int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2();
+        if(rs1 >= 32) rs1 = 0;
+        if(rs2 >= 32) rs2 = 0;
+        rde = {rfd.pc,ID_code.getClass(),reg[rs1],reg[rs2],ID_code.getrd(),ID_code.getShamt(),ID_code.getimm()};
     }
-    void execute(unsigned int code,parser & ID_code,state & codeState){
-        opClass codeClass = ID_code.getClass();
+
+    void execute(){ // DE -> EM
+        opClass codeClass = rde.codeClass;
+        rem.setDefault();
+        rem.pc = rde.pc;
         if(codeClass == LUI){
-            int rd = ID_code.getrd();
-            codeState.regFlag = true;
-            codeState.rd = rd;
-            codeState.value = ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.imm;
             return;
         }
         if(codeClass == AUIPC){
-            int rd = ID_code.getrd();
-            codeState.regFlag = true;
-            codeState.rd = rd;
-            codeState.value = codeState.pc + ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.pc + rde.imm;
             return;
         }
         if(codeClass == JAL){
-            int rd = ID_code.getrd();
-            codeState.regFlag = true;
-            codeState.rd = rd;
-            codeState.value = codeState.pc + 4;
-            codeState.pcFlag = true;
-            codeState.newpc = codeState.pc + ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.pc + 4;
+            rem.pcFlag = true;
+            rem.newpc = rde.pc + rde.imm;
             return;
         }
         if(codeClass == JALR){
-            int rd = ID_code.getrd();
-            codeState.regFlag = true;
-            codeState.rd = rd;
-            codeState.value = codeState.pc + 4;
-            int rs1 = ID_code.getrs1();
-            codeState.pcFlag = true;
-            codeState.newpc = (reg[rs1]+ID_code.getimm()) & (~1);
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.pc + 4;
+            rem.pcFlag = true;
+            rem.newpc = (rde.rs1_value+rde.imm) & (~1);
             return;
         }
         if(codeClass == BEQ){
-            int rs1 = ID_code.getrs1();
-            int rs2 = ID_code.getrs2();
-            if(reg[rs1] != reg[rs2]) return;
-            codeState.pcFlag = true;
-            codeState.newpc = codeState.pc + ID_code.getimm();
+            if(rde.rs1_value != rde.rs2_value) return;
+            rem.pcFlag = true;
+            rem.newpc = rde.pc + rde.imm;
             return;
         }
         if(codeClass == BNE){
-            int rs1 = ID_code.getrs1();
-            int rs2 = ID_code.getrs2();
-            if(reg[rs1] == reg[rs2]) return;
-            codeState.pcFlag = true;
-            codeState.newpc = codeState.pc + ID_code.getimm();
+            if(rde.rs1_value == rde.rs2_value) return;
+            rem.pcFlag = true;
+            rem.newpc = rde.pc + rde.imm;
             return;
         }
         if(codeClass == BLT){
-            int rs1 = ID_code.getrs1();
-            int rs2 = ID_code.getrs2();
-            if((int)reg[rs1] < (int)reg[rs2]){
-                codeState.pcFlag = true;
-                codeState.newpc = codeState.pc + ID_code.getimm();
+            if((int)rde.rs1_value < (int)rde.rs2_value){
+                rem.pcFlag = true;
+                rem.newpc = rde.pc + rde.imm;
             }
             return;
         }
         if(codeClass == BGE){
-            int rs1 = ID_code.getrs1();
-            int rs2 = ID_code.getrs2();
-            if((int)reg[rs1] >= (int)reg[rs2]){
-                codeState.pcFlag = true;
-                codeState.newpc = codeState.pc + ID_code.getimm();
+            if((int)rde.rs1_value >= (int)rde.rs2_value){
+                rem.pcFlag = true;
+                rem.newpc = rde.pc + rde.imm;
             }
             return;
         }
         if(codeClass == BLTU){
-            int rs1 = ID_code.getrs1();
-            int rs2 = ID_code.getrs2();
-            if(reg[rs1] < reg[rs2]){
-                codeState.pcFlag = true;
-                codeState.newpc = codeState.pc + ID_code.getimm();
+            if(rde.rs1_value < rde.rs2_value){
+                rem.pcFlag = true;
+                rem.newpc = rde.pc + rde.imm;
             }
             return;
         }
         if(codeClass == BGEU){
-            int rs1 = ID_code.getrs1();
-            int rs2 = ID_code.getrs2();
-            if(reg[rs1] >= reg[rs2]){
-                codeState.pcFlag = true;
-                codeState.newpc = codeState.pc + ID_code.getimm();
+            if(rde.rs1_value >= rde.rs2_value){
+                rem.pcFlag = true;
+                rem.newpc = rde.pc + rde.imm;
             }
             return;
         }
         if(codeClass == LB){
-            int rd = ID_code.getrd();
-            int rs1 = ID_code.getrs1();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.ramFlag = true;codeState.ramRead = true;codeState.sign = true;codeState.size = 1;
-            codeState.ramPos = reg[rs1] + ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.ramFlag = true;
+            rem.ramRead = true;
+            rem.sign = true;
+            rem.size = 1;
+            rem.ramPos = rde.rs1_value + rde.imm;
             return;
         }
         if(codeClass == LH){
-            int rd = ID_code.getrd();
-            int rs1 = ID_code.getrs1();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.ramFlag = true;codeState.ramRead = true;codeState.sign = true;codeState.size = 2;
-            codeState.ramPos = reg[rs1] + ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.ramFlag = true;
+            rem.ramRead = true;
+            rem.sign = true;
+            rem.size = 2;
+            rem.ramPos = rde.rs1_value + rde.imm;
             return;
         }
         if(codeClass == LW){
-            int rd = ID_code.getrd();
-            int rs1 = ID_code.getrs1();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.ramFlag = true;codeState.ramRead = true;codeState.sign = true;codeState.size = 4;
-            codeState.ramPos = reg[rs1] + ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.ramFlag = true;
+            rem.ramRead = true;
+            rem.sign = true;
+            rem.size = 4;
+            rem.ramPos = rde.rs1_value + rde.imm;
             return;
         }
         if(codeClass == LBU){
-            int rd = ID_code.getrd();
-            int rs1 = ID_code.getrs1();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.ramFlag = true;codeState.ramRead = true;codeState.sign = false;codeState.size = 1;
-            codeState.ramPos = reg[rs1] + ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.ramFlag = true;
+            rem.ramRead = true;
+            rem.sign = false;
+            rem.size = 1;
+            rem.ramPos = rde.rs1_value + rde.imm;
             return;
         }
         if(codeClass == LHU){
-            int rd = ID_code.getrd();
-            int rs1 = ID_code.getrs1();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.ramFlag = true;codeState.ramRead = true;codeState.sign = false;codeState.size = 2;
-            codeState.ramPos = reg[rs1] + ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.ramFlag = true;
+            rem.ramRead = true;
+            rem.sign = false;
+            rem.size = 2;
+            rem.ramPos = rde.rs1_value + rde.imm;
             return;
         }
         if(codeClass == SB){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2();
-            codeState.ramFlag = true;codeState.ramWrite = true;codeState.size = 1;
-            codeState.ramPos = reg[rs1] + ID_code.getimm();codeState.data = reg[rs2];
+            rem.ramFlag = true;
+            rem.ramWrite = true;
+            rem.size = 1;
+            rem.ramPos = rde.rs1_value + rde.imm;
+            rem.data = rde.rs2_value;
             return;
         }
         if(codeClass == SH){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2();
-            codeState.ramFlag = true;codeState.ramWrite = true;codeState.size = 2;
-            codeState.ramPos = reg[rs1] + ID_code.getimm();codeState.data = reg[rs2];
+            rem.ramFlag = true;
+            rem.ramWrite = true;
+            rem.size = 2;
+            rem.ramPos = rde.rs1_value + rde.imm;
+            rem.data = rde.rs2_value;
             return;
         }
         if(codeClass == SW){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2();
-            codeState.ramFlag = true;codeState.ramWrite = true;codeState.size = 4;
-            codeState.ramPos = reg[rs1] + ID_code.getimm();codeState.data = reg[rs2];
+            rem.ramFlag = true;
+            rem.ramWrite = true;
+            rem.size = 4;
+            rem.ramPos = rde.rs1_value + rde.imm;
+            rem.data = rde.rs2_value;
             return;
         }
         if(codeClass == ADDI){
-            int rs1 = ID_code.getrs1();
-            int rd = ID_code.getrd();
-            codeState.regFlag = true;
-            codeState.rd = rd;
-            codeState.value = reg[rs1] + ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value + rde.imm;
             return;
         }
         if(codeClass == SLTI){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            if((int)reg[rs1] < (int)ID_code.getimm()) codeState.value = 1;
-            else codeState.value = 0;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            if((int)rde.rs1_value < (int)rde.imm) rem.value = 1;
+            else rem.value = 0;
             return;
         }
         if(codeClass == SLTIU){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            if(reg[rs1] < ID_code.getimm()) codeState.value = 1;
-            else codeState.value = 0;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            if(rde.rs1_value < rde.imm) rem.value = 1;
+            else rem.value = 0;
             return;
         }
         if(codeClass == XORI){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] ^ ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value ^ rde.imm;
             return;
         }
         if(codeClass == ORI){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] | ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value | rde.imm;
             return;
         }
         if(codeClass == ANDI){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] & ID_code.getimm();
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value & rde.imm;
             return;
         }
         if(codeClass == SLLI){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd(),shamt = ID_code.getShamt();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] << shamt;
+            int shamt = rde.shamt;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value << shamt;
             return;
         }
         if(codeClass == SRLI){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd(),shamt = ID_code.getShamt();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] >> shamt;
+            int shamt = rde.shamt;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value >> shamt;
             return;
         }
         if(codeClass == SRAI){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd(),shamt = ID_code.getShamt();
-            codeState.regFlag = true;codeState.rd = rd;
-            unsigned int rs131 = reg[rs1] >> 31;
-            codeState.value = reg[rs1] >> shamt;
+            int shamt = rde.shamt;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            unsigned int rs131 = rde.rs1_value >> 31;
+            rem.value = rde.rs1_value >> shamt;
             if(rs131 == 0u) return;
             if(rs131 == 1u){
                 unsigned int tmp = 0;
@@ -258,62 +284,62 @@ private:
                     tmp <<= 1;tmp += 1;
                 }
                 tmp <<= (32-shamt);
-                codeState.value |= tmp;
+                rem.value |= tmp;
             }
             return;
         }
         if(codeClass == ADD){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] + reg[rs2];
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value+rde.rs2_value;
             return;
         }
         if(codeClass == SUB){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] - reg[rs2];
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value-rde.rs2_value;
             return;
         }
         if(codeClass == SLL){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            unsigned int shamt = reg[rs2] & (0b11111u);
-            codeState.value = reg[rs1] << shamt;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            unsigned int shamt = rde.rs2_value & (0b11111u);
+            rem.value = rde.rs1_value << shamt;
             return;
         }
         if(codeClass == SLT){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            if((int)reg[rs1] < (int)reg[rs2]) codeState.value = 1;
-            else codeState.value = 0;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            if((int)rde.rs1_value < (int)rde.rs2_value) rem.value = 1;
+            else rem.value = 0;
             return;
         }
         if(codeClass == SLTU){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            if(reg[rs1] < reg[rs2]) codeState.value = 1;
-            else codeState.value = 0;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            if(rde.rs1_value < rde.rs2_value) rem.value = 1;
+            else rem.value = 0;
             return;
         }
         if(codeClass == XOR){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] ^ reg[rs2];
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value ^ rde.rs2_value;
             return;
         }
         if(codeClass == SRL){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            unsigned int shamt = reg[rs2] & (0b11111u);
-            codeState.value = reg[rs1] >> shamt;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            unsigned int shamt = rde.rs2_value & (0b11111u);
+            rem.value = rde.rs1_value >> shamt;
             return;
         }
         if(codeClass == SRA){
-            int rs1 = ID_code.getrs1(),rd = ID_code.getrd(),rs2 = ID_code.getrs2();
-            codeState.regFlag = true;codeState.rd = rd;
-            unsigned int shamt = reg[rs2] & (0b11111u);
-            unsigned int rs131 = reg[rs1] >> 31;
-            codeState.value = reg[rs1] >> shamt;
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            unsigned int shamt = rde.rs2_value & (0b11111u);
+            unsigned int rs131 = rde.rs1_value >> 31;
+            rem.value = rde.rs1_value >> shamt;
             if(rs131 == 0u) return;
             if(rs131 == 1u){
                 unsigned int tmp = 0;
@@ -321,49 +347,60 @@ private:
                     tmp <<= 1;tmp += 1;
                 }
                 tmp <<= (32-shamt);
-                codeState.value |= tmp;
+                rem.value |= tmp;
             }
             return;
         }
         if(codeClass == OR){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] | reg[rs2];
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value | rde.rs2_value;
             return;
         }
         if(codeClass == AND){
-            int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2(),rd = ID_code.getrd();
-            codeState.regFlag = true;codeState.rd = rd;
-            codeState.value = reg[rs1] & reg[rs2];
+            rem.regFlag = true;
+            rem.rd = rde.rd;
+            rem.value = rde.rs1_value & rde.rs2_value;
             return;
         }
     }
-    void mem(state & codeState){
-        if(!codeState.ramFlag) return;
-        if(codeState.ramRead){
-            codeState.data = codeState.value = narrator.readData(codeState.ramPos,codeState.size,codeState.sign);
+
+    void mem(){ // EM -> MW
+        rmw.setDefault();
+        rmw.regFlag = rem.regFlag;
+        rmw.rd = rem.rd;
+        rmw.value = rem.value;
+        if(rem.ramRead){
+            rmw.regFlag = true;
+            rmw.rd = rem.rd;
+            rmw.value = narrator.readData(rem.ramPos,rem.size,rem.sign);
         }
-        if(codeState.ramWrite){
-            narrator.writeData(codeState.ramPos,codeState.size,codeState.data);
+        if(rem.ramWrite){
+            narrator.writeData(rem.ramPos,rem.size,rem.data);
+        }
+        if(rem.pcFlag){
+            pc = rem.newpc;
         }
     }
+
+    void writeBack(){
+        if(rmw.regFlag) {
+            if (rmw.rd != 0) reg[rmw.rd] = rmw.value;
+        }
+    }
+
 public:
     void run(){
         while(true) {
-            state codeState;
-            codeState.pc = pc;
-            unsigned opCode = IF(); // 1
-            if(opCode == 0x0ff00513u){
+            IF(); // 1
+            if(rfd.code == 0x0ff00513u){
                 std::cout << (unsigned int)(reg[10] & (0b11111111u));
                 break;
             }
-//            if(opCode == 0x8067u){
-//                std::cout << "debug";
-//            }
-            parser ID_code(ID(opCode)); // 2
-            execute(opCode, ID_code, codeState);// 3
-            mem(codeState); // 4
-            writeBack(codeState); // 5
+            ID(); // 2
+            execute();// 3
+            mem(); // 4
+            writeBack(); // 5
         }
     }
 };
