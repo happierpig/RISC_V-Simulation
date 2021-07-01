@@ -112,8 +112,7 @@ private:
         if(rs1 >= 32) rs1 = 0;
         if(rs2 >= 32) rs2 = 0;
         rde = {rfd.pc,ID_code.getClass(),reg[rs1],reg[rs2],ID_code.getrd(),ID_code.getrs1(),ID_code.getrs2(),ID_code.getShamt(),ID_code.getimm()};
-        if(modifyPc(rde.codeClass)){bubbles = 3;} // stop
-//        if(readRAM(rde.codeClass)){bubbles = 1;} // stop
+        if(modifyPc(rde.codeClass)){bubbles = 3;rfd.codeClass = bubble;} // stop
         if(checkNoRs(rde.codeClass)) return;
         // forwarding naming short circuit; maybe very fake(todo)
         if(rmw.codeClass != bubble && rmw.codeClass != end && rmw.regFlag && rmw.rd != 0){
