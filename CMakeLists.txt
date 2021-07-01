@@ -3,4 +3,4 @@ project(code)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(code main.cpp opReader.hpp parser.hpp program.hpp)
+add_executable(code main.cpp opReader.hpp parser.hpp program.hpp branchPredictor.hpp)

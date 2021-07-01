@@ -6,6 +6,7 @@
 #define RISC_V_PROGRAM_HPP
 #include "opReader.hpp"
 #include "parser.hpp"
+#include "branchPredictor.hpp"
 class program{
 private:
     reader narrator;
@@ -15,6 +16,8 @@ private:
     bool endFlag;
     int bubbles;
     bool still;
+    // branch predict
+    branchPredictor branchJudge;
 private:
     // short circuit
     struct Forwarding{
