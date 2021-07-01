@@ -191,4 +191,9 @@ bool checkRs12(opClass type){
 bool checkNoRs(opClass type){
     return (type==LUI||type==AUIPC||type==JAL);
 }
+/*
+ * JAL:当前+立即数
+ * JALR:当前+立即数字再&(~1)
+ * BEQ BNE BLT BGE BLTU BGEU:当前加立即数
+ */
 #endif //RISC_V_PARSER_HPP

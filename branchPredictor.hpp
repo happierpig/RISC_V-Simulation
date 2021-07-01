@@ -31,5 +31,8 @@ public:
     bool predict() const{
         return first;
     }
+    double efficiency()const{
+        return (double) correct / (correct + wrong);
+    }
 };
 #endif //CODE_BRANCHPREDICTOR_HPP
