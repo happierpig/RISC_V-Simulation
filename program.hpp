@@ -15,10 +15,12 @@ private:
     bool endFlag;
     int bubbles;
 private:
+    // short circuit
     struct Forwarding{
         bool first,second = false;
         unsigned int rs1,rs2 = 0u;
     }forwarding;
+    // register between two pipeline stage
     struct regFD{
         unsigned int pc = 0u;
         unsigned int code = 0u;
@@ -70,7 +72,6 @@ public:
         narrator.initialize();
     }
 private:
-
     void IF(){
         if(endFlag){
             rfd.codeClass = end;
@@ -462,7 +463,6 @@ private:
     }
 
 public:
-
     void run(){
         while(true){
             try {

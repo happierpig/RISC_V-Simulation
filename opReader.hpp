@@ -26,11 +26,11 @@ private:
         int ans = 0;
         char ch = getchar();
         if(ch == '@') throw 1;
-        if(ch == EOF) throw '1';
+        if(ch == '#') throw '1';
         while(!check(ch)){
             ch = getchar();
             if(ch == '@') throw 1;
-            if(ch == EOF) throw '1';
+            if(ch == '#') throw '1';
         }
         while(check(ch)){
             ans <<= 4;
