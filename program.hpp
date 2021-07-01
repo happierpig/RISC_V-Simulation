@@ -14,6 +14,7 @@ private:
     // pipeline elements
     bool endFlag;
     int bubbles;
+    bool still;
 private:
     // short circuit
     struct Forwarding{
@@ -68,8 +69,15 @@ private:
         }
     }rmw;
 public:
-    program(): narrator(1000000),pc(0),endFlag(false),bubbles(0){
+    program(): narrator(1000000),pc(0),endFlag(false),bubbles(0),still(false){
         narrator.initialize();
+    }
+private:
+    void makeItStill(opClass type1,opClass type2){
+        if(checkNoRs(type1)) return;
+        if(!readRAM(type2)) return;
+        still = true;
+        rde.codeClass = bubble;
     }
 private:
     void IF(){
@@ -96,12 +104,16 @@ private:
         rde.codeClass = rfd.codeClass;
         if(rfd.codeClass == end || rfd.codeClass == bubble) return;
         parser ID_code(rfd.code);
+        // stop for 1 clock
+        makeItStill(ID_code.getClass(),rem.codeClass);
+        if(still) return;
+
         unsigned int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2();
         if(rs1 >= 32) rs1 = 0;
         if(rs2 >= 32) rs2 = 0;
         rde = {rfd.pc,ID_code.getClass(),reg[rs1],reg[rs2],ID_code.getrd(),ID_code.getrs1(),ID_code.getrs2(),ID_code.getShamt(),ID_code.getimm()};
         if(modifyPc(rde.codeClass)){bubbles = 3;} // stop
-        if(readRAM(rde.codeClass)){bubbles = 1;} // stop
+//        if(readRAM(rde.codeClass)){bubbles = 1;} // stop
         if(checkNoRs(rde.codeClass)) return;
         // forwarding naming short circuit; maybe very fake(todo)
         if(rmw.codeClass != bubble && rmw.codeClass != end && rmw.regFlag && rmw.rd != 0){
@@ -471,7 +483,8 @@ public:
                 mem();
                 execute();
                 ID();
-                IF();
+                if(!still) IF();
+                else still = false;
             }catch (...){
                 std::cout << (unsigned int)(reg[10] & (0b11111111u));
                 break;
