@@ -4,14 +4,14 @@
 
 #ifndef RISC_V_PARSER_HPP
 #define RISC_V_PARSER_HPP
-enum opClass{LUI,AUIPC,JAL,JALR,BEQ,BNE,BLT,BGE,BLTU,BGEU,LB,LH,LW,LBU,LHU,SB,SH,SW,ADDI,SLTI,SLTIU,XORI,ORI,ANDI,SLLI,SRLI,SRAI,ADD,SUB,SLL,SLT,SLTU,XOR,SRL,SRA,OR,AND,nullop};
+enum opClass{LUI,AUIPC,JAL,JALR,BEQ,BNE,BLT,BGE,BLTU,BGEU,LB,LH,LW,LBU,LHU,SB,SH,SW,ADDI,SLTI,SLTIU,XORI,ORI,ANDI,SLLI,SRLI,SRAI,ADD,SUB,SLL,SLT,SLTU,XOR,SRL,SRA,OR,AND,end,bubble};
 class parser{
 private:
     unsigned int code;
     opClass codeClass;
 public:
     parser() = delete;
-    explicit parser(unsigned int tmp):code(tmp),codeClass(nullop){
+    explicit parser(unsigned int tmp):code(tmp),codeClass(bubble){
         unsigned int opCode = tmp & (0b1111111u);
         unsigned int func = (tmp >> 12) & (0b111u);
         unsigned int func7 = (tmp >> 25) & (0b1111111u);
@@ -68,7 +68,7 @@ public:
             if(func == 0b110u) codeClass = OR;
             if(func == 0b111u) codeClass = AND;
         }
-        if(codeClass == nullop) throw 1;
+//        if(codeClass == nullop) throw 1;
     }
 public:
     opClass getClass(){return codeClass;}
@@ -175,4 +175,18 @@ public:
     }
 
 };
+
+bool modifyPc(opClass type){
+    return (type == AUIPC || type == JAL || type == JALR);
+}
+bool readRAM(opClass type){
+    return (type == LB || type == LH || type == LW || type == LBU || type == LHU );
+}
+bool checkRs1(opClass type){
+    return (type == JALR  || type == LB || type == LH || type == LW || type == LBU || type == LHU || type == ADDI || type == SLTI || type == SLTIU || type == XORI || type == ORI || type == ANDI || type == SLLI || type == SRLI || type == SRAI);
+}
+bool checkRs12(opClass type){
+    return (type==BEQ||type==BNE||type==BLT||type==BGE||type==BLTU||type==BGEU||type==SB||type==SH||type==SW||type==ADD||type==SUB||type==SLL||type==SLT||type==SLTU||type==XOR||type==SRL||type==SRA||type==OR||type==AND);
+}
+
 #endif //RISC_V_PARSER_HPP

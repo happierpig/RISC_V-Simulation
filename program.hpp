@@ -11,16 +11,25 @@ private:
     reader narrator;
     unsigned int reg[32];
     unsigned int pc;
+
+    bool endFlag;
+    int bubbles;
+private:
+    struct Forwarding{
+        bool first,second = false;
+        unsigned int rs1,rs2 = 0u;
+    }forwarding;
     struct regFD{
         unsigned int pc = 0u;
         unsigned int code = 0u;
+        opClass codeClass = bubble; // bubble means stop
     }rfd;
     struct regDE{
         unsigned int pc;
-        opClass codeClass;
+        opClass codeClass = bubble;
         unsigned int rs1_value;
         unsigned int rs2_value;
-        unsigned int rd;
+        unsigned int rd;unsigned int rs1;unsigned int rs2;
         unsigned int shamt;
         unsigned int imm;
     }rde;
@@ -38,7 +47,9 @@ private:
         bool regFlag = false;
         unsigned int rd = 0u;
         unsigned int value = 0u;
+        opClass codeClass = bubble;
         void setDefault(){
+            codeClass = bubble;
             pc = ramPos = newpc = rd = data = value = size = 0u;
             ramFlag = ramRead = ramWrite = pcFlag = regFlag = sign = false;
         }
@@ -47,36 +58,92 @@ private:
         bool regFlag = false;
         unsigned int rd;
         unsigned int value;
+        opClass codeClass = bubble;
         void setDefault(){
+            codeClass = bubble;
             regFlag = false;
             rd = value = 0u;
         }
     }rmw;
 public:
-    program(): narrator(1000000),pc(0){
+    program(): narrator(1000000),pc(0),endFlag(false),bubbles(0){
         narrator.initialize();
     }
 private:
 
-
     void IF(){
+        if(endFlag){
+            rfd.codeClass = end;
+            return;
+        }
+        if(bubbles){
+            rfd.codeClass = bubble;
+            --bubbles;
+            return;
+        }
+        rfd.codeClass = AND;
         rfd.pc = pc;
         rfd.code = narrator.readIns(pc);
+        if(rfd.code == 0x0ff00513u){
+            endFlag = true;
+            rfd.codeClass = end;
+        }
         pc += 4;
     }
 
     void ID(){
+        rde.codeClass = rfd.codeClass;
+        if(rfd.codeClass == end || rfd.codeClass == bubble) return;
         parser ID_code(rfd.code);
         unsigned int rs1 = ID_code.getrs1(),rs2 = ID_code.getrs2();
         if(rs1 >= 32) rs1 = 0;
         if(rs2 >= 32) rs2 = 0;
-        rde = {rfd.pc,ID_code.getClass(),reg[rs1],reg[rs2],ID_code.getrd(),ID_code.getShamt(),ID_code.getimm()};
+        rde = {rfd.pc,ID_code.getClass(),reg[rs1],reg[rs2],ID_code.getrd(),ID_code.getrs1(),ID_code.getrs2(),ID_code.getShamt(),ID_code.getimm()};
+        if(modifyPc(rde.codeClass)){bubbles = 3;}
+        if(readRAM(rde.codeClass)){bubbles = 1;}
+        if(rmw.codeClass != bubble && rmw.codeClass != end && rmw.regFlag && rmw.rd != 0){
+            if(checkRs1(rde.codeClass)){
+                if(rde.rs1 == rmw.rd){
+                    forwarding.first = true;forwarding.rs1 = rmw.value;
+                }
+            }
+            if(checkRs12(rde.codeClass)){
+                if(rde.rs1 == rmw.rd){
+                    forwarding.first = true;forwarding.rs1 = rmw.value;
+                }else if(rde.rs2 == rmw.rd){
+                    forwarding.second = true;forwarding.rs2 = rmw.value;
+                }
+            }
+        }
+        if(rem.codeClass != bubble && rem.codeClass != end && rem.regFlag && rem.rd != 0){
+            if(!readRAM(rem.codeClass)){
+                if(checkRs1(rde.codeClass)){
+                    if(rde.rs1 == rem.rd){
+                        forwarding.first = true;forwarding.rs1 = rem.value;
+                    }
+                }
+                if(checkRs12(rde.codeClass)){
+                    if(rde.rs1 == rem.rd){
+                        forwarding.first = true;forwarding.rs1 = rem.value;
+                    }else if(rde.rs2 == rem.rd){
+                        forwarding.second = true;forwarding.rs2 = rem.value;
+                    }
+                }
+            }
+        }
     }
 
     void execute(){ // DE -> EM
-        opClass codeClass = rde.codeClass;
         rem.setDefault();
+        opClass codeClass = rde.codeClass;
+        rem.codeClass = rde.codeClass;
+        if(codeClass == end || codeClass == bubble) return;
         rem.pc = rde.pc;
+        // forwarding
+        if(forwarding.first) rde.rs1_value = forwarding.rs1;
+        if(forwarding.second) rde.rs2_value = forwarding.rs2;
+        forwarding.first = forwarding.second = false;
+//        std::cout << rde.pc << std::endl;
         if(codeClass == LUI){
             rem.regFlag = true;
             rem.rd = rde.rd;
@@ -367,6 +434,8 @@ private:
 
     void mem(){ // EM -> MW
         rmw.setDefault();
+        rmw.codeClass = rem.codeClass;
+        if(rmw.codeClass == bubble || rmw.codeClass == end) return;
         rmw.regFlag = rem.regFlag;
         rmw.rd = rem.rd;
         rmw.value = rem.value;
@@ -384,23 +453,27 @@ private:
     }
 
     void writeBack(){
+        if(rmw.codeClass == bubble) return;
+        if(rmw.codeClass == end) throw 1;
         if(rmw.regFlag) {
             if (rmw.rd != 0) reg[rmw.rd] = rmw.value;
         }
     }
 
 public:
+
     void run(){
-        while(true) {
-            IF(); // 1
-            if(rfd.code == 0x0ff00513u){
+        while(true){
+            try {
+                writeBack();
+                mem();
+                execute();
+                ID();
+                IF();
+            }catch (...){
                 std::cout << (unsigned int)(reg[10] & (0b11111111u));
                 break;
             }
-            ID(); // 2
-            execute();// 3
-            mem(); // 4
-            writeBack(); // 5
         }
     }
 };
