@@ -573,8 +573,8 @@ public:
                 if(waiting) --waiting;
                 else still = false;
             }catch (...){
-                std::cout << (unsigned int)(reg[10] & (0b11111111u));
-//                std::cout << "Predictor Efficiency : " << branchJudge.efficiency();
+                std::cout << (unsigned int)(reg[10] & (0b11111111u)) << std::endl;
+                std::cout << "Predictor Efficiency : " << branchJudge.efficiency();
                 break;
             }
         }

@@ -22,15 +22,16 @@ private:
         else if(ch >= 'A' && ch <= 'F') return true;
         else return false;
     }
+
     int readByte(){ //Hex->Binary
         int ans = 0;
         char ch = getchar();
         if(ch == '@') throw 1;
-        if(ch == EOF) throw '1';
+        if(ch == '#') throw '1';
         while(!check(ch)){
             ch = getchar();
             if(ch == '@') throw 1;
-            if(ch == EOF) throw '1';
+            if(ch == '#') throw '1';
         }
         while(check(ch)){
             ans <<= 4;
@@ -40,6 +41,7 @@ private:
         }
         return ans;
     }
+
     void printBinary(int x){
         int s[100] = {0};int top = 0;
         while(x > 0){
@@ -50,6 +52,7 @@ private:
         while(top) std::cout << s[top--];
         std::cout << std::endl;
     }
+
     unsigned int signExtend(unsigned int data,int size){
         int bits = size << 3;
         if(bits == 32) return data;
@@ -81,6 +84,7 @@ public:
             }
         }
     }
+
     unsigned int readIns(int pc){
         unsigned int ans = 0;
         for(int i = 3;i >= 0;--i){
@@ -89,6 +93,7 @@ public:
         }
         return ans;
     }
+
     unsigned int readData(int pos,int size,bool sign){
         //bits: 1(size) == 1(char) == 1 bytes = 8 bits
         unsigned int ans = 0;
@@ -99,6 +104,7 @@ public:
         if(!sign) return ans;
         else return signExtend(ans,size);
     }
+
     void writeData(int pos,int size,unsigned int data){
         for(int i = 0;i < size;++i){
             unsigned int tmp = data & (0b11111111u);
@@ -106,5 +112,6 @@ public:
             opCode[pos+i] = (unsigned char) tmp;
         }
     }
+
 };
 #endif //RISC_V_OPREADER_HPP

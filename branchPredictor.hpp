@@ -72,12 +72,15 @@ private:
     }
 public:
     branchPredictor() = default;
+
     bool predict(unsigned int pc) const{
         return table[hash(pc)].predict();
     }
+
     void modify(unsigned int pc,bool flag){
         table[hash(pc)].modify(flag);
     }
+
     double efficiency() const{
         unsigned int correct = 0,wrong = 0;
         for(int i = 0;i < 4096;++i){
@@ -86,9 +89,11 @@ public:
         }
         return (double) correct / (correct + wrong);
     }
+
     void setModifyPc(unsigned int pc,unsigned int modifiedPc){
         table[hash(pc)].modifiedPc = modifiedPc;
     }
+
     unsigned int getModifyPc(unsigned int pc){
         return table[hash(pc)].modifiedPc;
     }

@@ -179,15 +179,19 @@ public:
 bool modifyPc(opClass type){
     return (type == BEQ || type == BNE || type == BLT || type == BGE || type == BLTU || type == BGEU);
 }
+
 bool readRAM(opClass type){
     return (type == LB || type == LH || type == LW || type == LBU || type == LHU );
 }
+
 bool checkRs1(opClass type){
     return (type == JALR  || type == LB || type == LH || type == LW || type == LBU || type == LHU || type == ADDI || type == SLTI || type == SLTIU || type == XORI || type == ORI || type == ANDI || type == SLLI || type == SRLI || type == SRAI);
 }
+
 bool checkRs12(opClass type){
     return (type==BEQ||type==BNE||type==BLT||type==BGE||type==BLTU||type==BGEU||type==SB||type==SH||type==SW||type==ADD||type==SUB||type==SLL||type==SLT||type==SLTU||type==XOR||type==SRL||type==SRA||type==OR||type==AND);
 }
+
 bool checkNoRs(opClass type){
     return (type==LUI||type==AUIPC||type==JAL);
 }
