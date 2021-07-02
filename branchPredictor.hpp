@@ -4,28 +4,53 @@
 
 #ifndef CODE_BRANCHPREDICTOR_HPP
 #define CODE_BRANCHPREDICTOR_HPP
-class branchPredictor{
-private:
+class twoBits{
+public:
     bool first,second;
     int correct,wrong;
 public:
-    branchPredictor():first(true),second(true),correct(0),wrong(0){}
+    twoBits():first(true),second(true),correct(0),wrong(0){}
     void modify(bool flag){
         if(first && second){
-            if(flag) return;
-            else second = false;
+            if(flag){
+                ++correct;
+                return;
+            }else{
+                ++wrong;
+                second = false;
+                return;
+            }
         }
         if((!first) && (!second)){
-            if(!flag) second = true;
-            else second = false;
+            if(!flag){
+                ++correct;
+                return;
+            }else {
+                second = true;
+                ++wrong;
+                return;
+            }
         }
         if(first && (!second)){
-            if(flag) second = true;
-            else first = false;
+            if(flag){
+                ++correct;
+                second = true;
+                return;
+            }else{
+                first = false;
+                ++wrong;
+                return;
+            }
         }
         if((!first) && second){
-            if(flag) second = false;
-            else first = true;
+            if(!flag){
+                ++correct;
+                second = false;
+                return;
+            }else{
+                ++wrong;
+                first = true;
+            }
         }
     }
     bool predict() const{
@@ -33,6 +58,32 @@ public:
     }
     double efficiency()const{
         return (double) correct / (correct + wrong);
+    }
+};
+
+class branchPredictor{
+private:
+    twoBits table[4096];
+    const unsigned int lowbits = 0b111111111111u;
+private:
+    unsigned int hash(unsigned int pc) const {
+        return pc & lowbits;
+    }
+public:
+    branchPredictor() = default;
+    bool predict(unsigned int pc) const{
+        return table[hash(pc)].predict();
+    }
+    void modify(unsigned int pc,bool flag){
+        table[hash(pc)].modify(flag);
+    }
+    double efficiency() const{
+        int correct = 0,wrong = 0;
+        for(int i = 0;i < 4096;++i){
+            correct += table[i].correct;
+            wrong += table[i].wrong;
+        }
+        return (double) correct / correct + wrong;
     }
 };
 #endif //CODE_BRANCHPREDICTOR_HPP
