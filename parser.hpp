@@ -191,6 +191,7 @@ bool checkRs12(opClass type){
 bool checkNoRs(opClass type){
     return (type==LUI||type==AUIPC||type==JAL);
 }
+
 /*
  * JAL:当前+立即数
  * JALR:当前+立即数字再&(~1)

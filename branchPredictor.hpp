@@ -4,7 +4,7 @@
 
 #ifndef CODE_BRANCHPREDICTOR_HPP
 #define CODE_BRANCHPREDICTOR_HPP
-class twoBits{
+class twoBits{ // 2-bit prediction scheme
 public:
     bool first,second;
     int correct,wrong;
