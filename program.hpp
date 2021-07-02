@@ -18,6 +18,7 @@ private:
     bool still;
     // branch predict
     branchPredictor branchJudge;
+    int waiting;
 private:
     // short circuit
     struct Forwarding{
@@ -40,6 +41,7 @@ private:
         unsigned int imm;
     }rde;
     struct regEM{
+        bool three;
         unsigned int pc;
         bool ramFlag = false;
         unsigned int ramPos = 0u;
@@ -57,7 +59,7 @@ private:
         void setDefault(){
             codeClass = bubble;
             pc = ramPos = rd = data = value = size = 0u;
-            ramFlag = ramRead = ramWrite = regFlag = sign = false;
+            ramFlag = ramRead = ramWrite = regFlag = sign = three = false;
         }
     }rem;
     struct regMW{
@@ -72,7 +74,7 @@ private:
         }
     }rmw;
 public:
-    program(): narrator(1000000),pc(0),endFlag(false),bubbles(0),still(false){
+    program(): narrator(1000000),pc(0),endFlag(false),bubbles(0),waiting(0),still(false){
         narrator.initialize();
     }
 private:
@@ -527,6 +529,12 @@ private:
     }
 
     void mem(){ // EM -> MW
+        if(!rem.three){
+            rem.three = true;
+            waiting = 3;
+            still = true;
+            return;
+        }
         rmw.setDefault();
         rmw.codeClass = rem.codeClass;
         if(rmw.codeClass == bubble || rmw.codeClass == end) return;
@@ -558,11 +566,12 @@ public:
     void run(){
         while(true){
             try {
-                writeBack();
-                mem();
-                execute();
-                ID();
+                if(!still) writeBack();
+                if(!still) mem();
+                if(!still) execute();
+                if(!still) ID();
                 if(!still) IF();
+                if(waiting) --waiting;
                 else still = false;
             }catch (...){
                 std::cout << (unsigned int)(reg[10] & (0b11111111u));
