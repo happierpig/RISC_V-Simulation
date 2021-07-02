@@ -48,16 +48,16 @@ private:
         bool sign = false;
         unsigned int data;
         unsigned int size;
-        bool pcFlag = false;
-        unsigned int newpc = 0;
+//        bool pcFlag = false;
+//        unsigned int newpc = 0;
         bool regFlag = false;
         unsigned int rd = 0u;
         unsigned int value = 0u;
         opClass codeClass = bubble;
         void setDefault(){
             codeClass = bubble;
-            pc = ramPos = newpc = rd = data = value = size = 0u;
-            ramFlag = ramRead = ramWrite = pcFlag = regFlag = sign = false;
+            pc = ramPos = rd = data = value = size = 0u;
+            ramFlag = ramRead = ramWrite = regFlag = sign = false;
         }
     }rem;
     struct regMW{
@@ -94,9 +94,14 @@ private:
             return;
         }
         //below branch predictor
-
-
-
+        if(modifyPc(rde.codeClass)){
+            if(branchJudge.predict(rde.pc)){
+                pc = rde.pc+rde.imm;
+                branchJudge.setModifyPc(rde.pc,pc);
+            }else{
+                branchJudge.setModifyPc(rde.pc,pc);
+            }
+        }
 
         rfd.codeClass = AND;
         rfd.pc = pc;
@@ -121,7 +126,7 @@ private:
         if(rs2 >= 32) rs2 = 0;
         rde = {rfd.pc,ID_code.getClass(),reg[rs1],reg[rs2],ID_code.getrd(),ID_code.getrs1(),ID_code.getrs2(),ID_code.getShamt(),ID_code.getimm()};
 
-        if(modifyPc(rde.codeClass)){bubbles = 3;rfd.codeClass = bubble;} // stop
+//        if(modifyPc(rde.codeClass)){bubbles = 3;rfd.codeClass = bubble;} // stop
         if(rde.codeClass == JAL) pc = rde.pc + rde.imm;
         if(rde.codeClass == JALR) pc = (rde.rs1_value+rde.imm) & (~1);
         //belows deal with Data Hazards
@@ -169,7 +174,6 @@ private:
         if(forwarding.first) rde.rs1_value = forwarding.rs1;
         if(forwarding.second) rde.rs2_value = forwarding.rs2;
         forwarding.first = forwarding.second = false;
-//        std::cout << rde.pc << std::endl;
         if(codeClass == LUI){
             rem.regFlag = true;
             rem.rd = rde.rd;
@@ -186,55 +190,119 @@ private:
             rem.regFlag = true;
             rem.rd = rde.rd;
             rem.value = rde.pc + 4;
-//            rem.pcFlag = true;
-//            rem.newpc = rde.pc + rde.imm;
             return;
         }
         if(codeClass == JALR){
             rem.regFlag = true;
             rem.rd = rde.rd;
             rem.value = rde.pc + 4;
-//            rem.pcFlag = true;
-//            rem.newpc = (rde.rs1_value+rde.imm) & (~1);
             return;
         }
         if(codeClass == BEQ){
-            if(rde.rs1_value != rde.rs2_value) return;
-            rem.pcFlag = true;
-            rem.newpc = rde.pc + rde.imm;
+            if(rde.rs1_value != rde.rs2_value) {
+                branchJudge.modify(rde.pc,false);
+                if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + 4;
+                }
+            }else {
+                branchJudge.modify(rde.pc,true);
+                if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + rde.imm;
+                }
+            }
             return;
         }
         if(codeClass == BNE){
-            if(rde.rs1_value == rde.rs2_value) return;
-            rem.pcFlag = true;
-            rem.newpc = rde.pc + rde.imm;
+            if(rde.rs1_value == rde.rs2_value){
+                branchJudge.modify(rde.pc,false);
+                if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + 4;
+                }
+            }else {
+                branchJudge.modify(rde.pc,true);
+                if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + rde.imm;
+                }
+            }
             return;
         }
         if(codeClass == BLT){
             if((int)rde.rs1_value < (int)rde.rs2_value){
-                rem.pcFlag = true;
-                rem.newpc = rde.pc + rde.imm;
+                branchJudge.modify(rde.pc,true);
+                if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + rde.imm;
+                }
+            }else{
+                branchJudge.modify(rde.pc,false);
+                if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + 4;
+                }
             }
             return;
         }
         if(codeClass == BGE){
             if((int)rde.rs1_value >= (int)rde.rs2_value){
-                rem.pcFlag = true;
-                rem.newpc = rde.pc + rde.imm;
+                branchJudge.modify(rde.pc,true);
+                if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + rde.imm;
+                }
+            }else{
+                branchJudge.modify(rde.pc,false);
+                if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + 4;
+                }
             }
             return;
         }
         if(codeClass == BLTU){
             if(rde.rs1_value < rde.rs2_value){
-                rem.pcFlag = true;
-                rem.newpc = rde.pc + rde.imm;
+                branchJudge.modify(rde.pc,true);
+                if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + rde.imm;
+                }
+            }else{
+                branchJudge.modify(rde.pc,false);
+                if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + 4;
+                }
             }
             return;
         }
         if(codeClass == BGEU){
             if(rde.rs1_value >= rde.rs2_value){
-                rem.pcFlag = true;
-                rem.newpc = rde.pc + rde.imm;
+                branchJudge.modify(rde.pc,true);
+                if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + rde.imm;
+                }
+            }else{
+                branchJudge.modify(rde.pc,false);
+                if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
+                    rfd.codeClass = bubble;
+                    if(endFlag) endFlag = false;
+                    pc = rde.pc + 4;
+                }
             }
             return;
         }
@@ -473,9 +541,9 @@ private:
         if(rem.ramWrite){
             narrator.writeData(rem.ramPos,rem.size,rem.data);
         }
-        if(rem.pcFlag){
-            pc = rem.newpc;
-        }
+//        if(rem.pcFlag){
+//            pc = rem.newpc;
+//        }
     }
 
     void writeBack(){
@@ -497,7 +565,8 @@ public:
                 if(!still) IF();
                 else still = false;
             }catch (...){
-                std::cout << (unsigned int)(reg[10] & (0b11111111u));
+                std::cout << (unsigned int)(reg[10] & (0b11111111u)) << std::endl;
+                std::cout << "Predictor Efficiency : " << branchJudge.efficiency();
                 break;
             }
         }
