@@ -93,6 +93,11 @@ private:
             --bubbles;
             return;
         }
+        //below branch predictor
+
+
+
+
         rfd.codeClass = AND;
         rfd.pc = pc;
         rfd.code = narrator.readIns(pc);
@@ -117,7 +122,8 @@ private:
         rde = {rfd.pc,ID_code.getClass(),reg[rs1],reg[rs2],ID_code.getrd(),ID_code.getrs1(),ID_code.getrs2(),ID_code.getShamt(),ID_code.getimm()};
 
         if(modifyPc(rde.codeClass)){bubbles = 3;rfd.codeClass = bubble;} // stop
-
+        if(rde.codeClass == JAL) pc = rde.pc + rde.imm;
+        if(rde.codeClass == JALR) pc = (rde.rs1_value+rde.imm) & (~1);
         //belows deal with Data Hazards
         if(checkNoRs(rde.codeClass)) return;
         // forwarding naming short circuit; maybe very fake(todo)
@@ -180,16 +186,16 @@ private:
             rem.regFlag = true;
             rem.rd = rde.rd;
             rem.value = rde.pc + 4;
-            rem.pcFlag = true;
-            rem.newpc = rde.pc + rde.imm;
+//            rem.pcFlag = true;
+//            rem.newpc = rde.pc + rde.imm;
             return;
         }
         if(codeClass == JALR){
             rem.regFlag = true;
             rem.rd = rde.rd;
             rem.value = rde.pc + 4;
-            rem.pcFlag = true;
-            rem.newpc = (rde.rs1_value+rde.imm) & (~1);
+//            rem.pcFlag = true;
+//            rem.newpc = (rde.rs1_value+rde.imm) & (~1);
             return;
         }
         if(codeClass == BEQ){
