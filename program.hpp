@@ -549,14 +549,13 @@ private:
         if(rem.ramWrite){
             narrator.writeData(rem.ramPos,rem.size,rem.data);
         }
-//        if(rem.pcFlag){
-//            pc = rem.newpc;
-//        }
+        rem.codeClass = bubble;
     }
 
     void writeBack(){
         if(rmw.codeClass == bubble) return;
         if(rmw.codeClass == end) throw 1;
+        rmw.codeClass = bubble;
         if(rmw.regFlag) {
             if (rmw.rd != 0) reg[rmw.rd] = rmw.value;
         }
