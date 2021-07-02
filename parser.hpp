@@ -177,7 +177,7 @@ public:
 };
 
 bool modifyPc(opClass type){
-    return (type == JAL || type == JALR || type == BEQ || type == BNE || type == BLT || type == BGE || type == BLTU || type == BGEU);
+    return (type == BEQ || type == BNE || type == BLT || type == BGE || type == BLTU || type == BGEU);
 }
 bool readRAM(opClass type){
     return (type == LB || type == LH || type == LW || type == LBU || type == LHU );
