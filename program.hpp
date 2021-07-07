@@ -6,7 +6,8 @@
 #define RISC_V_PROGRAM_HPP
 #include "opReader.hpp"
 #include "parser.hpp"
-#include "branchPredictor.hpp"
+#include "highLevelBranchPredictor.hpp"
+//#include "branchPredictor.hpp"
 class program{
 private:
     reader narrator;
@@ -202,109 +203,109 @@ private:
         }
         if(codeClass == BEQ){
             if(rde.rs1_value != rde.rs2_value) {
-                branchJudge.modify(rde.pc,false);
                 if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + 4;
                 }
+                branchJudge.modify(rde.pc,false);
             }else {
-                branchJudge.modify(rde.pc,true);
                 if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + rde.imm;
                 }
+                branchJudge.modify(rde.pc,true);
             }
             return;
         }
         if(codeClass == BNE){
             if(rde.rs1_value == rde.rs2_value){
-                branchJudge.modify(rde.pc,false);
                 if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + 4;
                 }
+                branchJudge.modify(rde.pc,false);
             }else {
-                branchJudge.modify(rde.pc,true);
                 if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + rde.imm;
                 }
+                branchJudge.modify(rde.pc,true);
             }
             return;
         }
         if(codeClass == BLT){
             if((int)rde.rs1_value < (int)rde.rs2_value){
-                branchJudge.modify(rde.pc,true);
                 if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + rde.imm;
                 }
+                branchJudge.modify(rde.pc,true);
             }else{
-                branchJudge.modify(rde.pc,false);
                 if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + 4;
                 }
+                branchJudge.modify(rde.pc,false);
             }
             return;
         }
         if(codeClass == BGE){
             if((int)rde.rs1_value >= (int)rde.rs2_value){
-                branchJudge.modify(rde.pc,true);
                 if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + rde.imm;
                 }
+                branchJudge.modify(rde.pc,true);
             }else{
-                branchJudge.modify(rde.pc,false);
                 if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + 4;
                 }
+                branchJudge.modify(rde.pc,false);
             }
             return;
         }
         if(codeClass == BLTU){
             if(rde.rs1_value < rde.rs2_value){
-                branchJudge.modify(rde.pc,true);
                 if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + rde.imm;
                 }
+                branchJudge.modify(rde.pc,true);
             }else{
-                branchJudge.modify(rde.pc,false);
                 if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + 4;
                 }
+                branchJudge.modify(rde.pc,false);
             }
             return;
         }
         if(codeClass == BGEU){
             if(rde.rs1_value >= rde.rs2_value){
-                branchJudge.modify(rde.pc,true);
                 if(rde.pc + rde.imm != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + rde.imm;
                 }
+                branchJudge.modify(rde.pc,true);
             }else{
-                branchJudge.modify(rde.pc,false);
                 if(rde.pc + 4 != branchJudge.getModifyPc(rde.pc)){
                     rfd.codeClass = bubble;
                     if(endFlag) endFlag = false;
                     pc = rde.pc + 4;
                 }
+                branchJudge.modify(rde.pc,false);
             }
             return;
         }
@@ -573,8 +574,8 @@ public:
                 if(waiting) --waiting;
                 else still = false;
             }catch (...){
-                std::cout << (unsigned int)(reg[10] & (0b11111111u)) << std::endl;
-                std::cout << "Predictor Efficiency : " << branchJudge.efficiency();
+                std::cout << (unsigned int)(reg[10] & (0b11111111u));
+//                std::cout << "Predict Times: " << branchJudge.times() << " Predictor Efficiency : " << branchJudge.efficiency();
                 break;
             }
         }

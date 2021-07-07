@@ -1,5 +1,5 @@
 //
-// Created by 赵先生 on 2021/7/1.
+// Created by 赵先生 on 2021/7/5.
 //
 
 #ifndef CODE_BRANCHPREDICTOR_HPP
@@ -57,52 +57,63 @@ public:
     bool predict() const{
         return first;
     }
-    double efficiency()const{
-        return (double) correct / (correct + wrong);
-    }
 };
 
 class branchPredictor{
 private:
-    twoBits table[4096];
-    const unsigned int lowbits = 0b111111111111u;
+    twoBits table[4096][64]; // 6-bits history record
+    unsigned int historyRecord[4096] = {0};
+    const unsigned int lowbits1;
+    const unsigned int lowbits2;
 private:
-    unsigned int hash(unsigned int pc) const {
-        return pc & lowbits;
+    unsigned int hash1(unsigned int pc) const {
+        return pc & lowbits1;
+    }
+    unsigned int hash2(unsigned int pc) const{
+        return historyRecord[hash1(pc)] & lowbits2;
     }
 public:
-    branchPredictor() = default;
+    branchPredictor():lowbits1(0b111111111111u),lowbits2(0b111111u){};
 
     bool predict(unsigned int pc) const{
-        return table[hash(pc)].predict();
+        return table[hash1(pc)][hash2(pc)].predict();
     }
 
     void modify(unsigned int pc,bool flag){
-        table[hash(pc)].modify(flag);
+        table[hash1(pc)][hash2(pc)].modify(flag);
+        historyRecord[hash1(pc)] <<= 1;
+        if(flag) historyRecord[hash1(pc)] += 1;
     }
 
     double efficiency() const{
         unsigned int correct = 0,wrong = 0;
         for(int i = 0;i < 4096;++i){
-            correct += table[i].correct;
-            wrong += table[i].wrong;
+            for(int j = 0;j < 64;++j) {
+                correct += table[i][j].correct;
+                wrong += table[i][j].wrong;
+            }
         }
         return (double) correct / (correct + wrong);
     }
+
     int times() const{
         int ans = 0;
         for(int i = 0;i < 4096;++i){
-            ans += table[i].correct;
-            ans += table[i].wrong;
+            for(int j = 0;j < 64;++j) {
+                ans += table[i][j].correct;
+                ans += table[i][j].wrong;
+            }
         }
         return ans;
     }
+
     void setModifyPc(unsigned int pc,unsigned int modifiedPc){
-        table[hash(pc)].modifiedPc = modifiedPc;
+        table[hash1(pc)][hash2(pc)].modifiedPc = modifiedPc;
     }
 
     unsigned int getModifyPc(unsigned int pc){
-        return table[hash(pc)].modifiedPc;
+        return table[hash1(pc)][hash2(pc)].modifiedPc;
     }
+
 };
 #endif //CODE_BRANCHPREDICTOR_HPP
