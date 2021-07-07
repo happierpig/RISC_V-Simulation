@@ -61,7 +61,7 @@ public:
 
 class branchPredictor{
 private:
-    twoBits table[4096][64]; // 6-bits history record
+    twoBits table[4096][128]; // 7-bits history record
     unsigned int historyRecord[4096] = {0};
     const unsigned int lowbits1;
     const unsigned int lowbits2;
@@ -73,7 +73,7 @@ private:
         return historyRecord[hash1(pc)] & lowbits2;
     }
 public:
-    branchPredictor():lowbits1(0b111111111111u),lowbits2(0b111111u){};
+    branchPredictor():lowbits1(0b111111111111u),lowbits2(0b1111111u){};
 
     bool predict(unsigned int pc) const{
         return table[hash1(pc)][hash2(pc)].predict();
@@ -88,7 +88,7 @@ public:
     double efficiency() const{
         unsigned int correct = 0,wrong = 0;
         for(int i = 0;i < 4096;++i){
-            for(int j = 0;j < 64;++j) {
+            for(int j = 0;j < 128;++j) {
                 correct += table[i][j].correct;
                 wrong += table[i][j].wrong;
             }
@@ -99,7 +99,7 @@ public:
     int times() const{
         int ans = 0;
         for(int i = 0;i < 4096;++i){
-            for(int j = 0;j < 64;++j) {
+            for(int j = 0;j < 128;++j) {
                 ans += table[i][j].correct;
                 ans += table[i][j].wrong;
             }
