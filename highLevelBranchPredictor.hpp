@@ -10,7 +10,7 @@ public:
     int correct,wrong;
     unsigned int modifiedPc;
 public:
-    twoBits():first(true),second(true),correct(1),wrong(0),modifiedPc(0u){}
+    twoBits():first(true),second(false),correct(0),wrong(0),modifiedPc(0u){}
     void modify(bool flag){
         if(first && second){
             if(flag){
