@@ -10,7 +10,7 @@ public:
     int correct,wrong;
     unsigned int modifiedPc;
 public:
-    twoBits():first(true),second(false),correct(0),wrong(0),modifiedPc(0u){}
+    twoBits():first(false),second(true),correct(0),wrong(0),modifiedPc(0u){}
     void modify(bool flag){
         if(first && second){
             if(flag){
@@ -102,6 +102,15 @@ public:
             for(int j = 0;j < 128;++j) {
                 ans += table[i][j].correct;
                 ans += table[i][j].wrong;
+            }
+        }
+        return ans;
+    }
+    int success()const{
+        int ans = 0;
+        for(int i = 0;i < 4096;++i){
+            for(int j = 0;j < 128;++j) {
+                ans += table[i][j].correct;
             }
         }
         return ans;
